@@ -147,7 +147,7 @@ type sortFilter struct {
 	order SortOrder
 }
 
-func SortFilter(value string, order SortOrder) Filter {
+func Sort(value string, order SortOrder) Filter {
 	return sortFilter{
 		value: value,
 		order: order,
@@ -155,7 +155,11 @@ func SortFilter(value string, order SortOrder) Filter {
 }
 
 func (sf sortFilter) GenerateRawQuery() (string, error) {
-	return fmt.Sprintf("%s:%s", sf.value, "asc"), nil
+	orderStr, err := sf.order.ToString()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate asc/desc string for sort: %w", err)
+	}
+	return fmt.Sprintf("sort=%s:%s", sf.value, orderStr), nil
 }
 
 type paginationFilter struct {
@@ -167,21 +171,21 @@ func (pf paginationFilter) GenerateRawQuery() (string, error) {
 	return fmt.Sprintf("%s=%s", pf.key, pf.value), nil
 }
 
-func LimitFilter(value int) Filter {
+func Limit(value int) Filter {
 	return paginationFilter{
 		key:   "limit",
 		value: strconv.Itoa(value),
 	}
 }
 
-func PageFilter(value int) Filter {
+func Page(value int) Filter {
 	return paginationFilter{
 		key:   "page",
 		value: strconv.Itoa(value),
 	}
 }
 
-func OffsetFilter(value int) Filter {
+func Offset(value int) Filter {
 	return paginationFilter{
 		key:   "offset",
 		value: strconv.Itoa(value),
