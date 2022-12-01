@@ -81,3 +81,17 @@ type Chapter struct {
 // 	"_id": "5cf5805fb53e011a64671582",
 // 	"name": "The Fellowship Of The Ring"
 //   },
+
+type Status struct {
+	Total  int `json:"total"`
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+	Page   int `json:"page"`
+	Pages  int `json:"pages"`
+}
+
+// "total": 62,
+// "limit": 1,
+// "offset": 0,
+// "page": 1,
+// "pages": 62
