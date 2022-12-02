@@ -34,7 +34,7 @@ A brief description of the files:
 - `model.go`: defines the Go structs that correspond to the JSON responses
 - `README.md`: description of the package
 
-Note that the acutal go module exists in the `lotrsdk` directory. This is so that
+Note that the actual go module exists in the `lotrsdk` directory. This is so that
 the repo is of the form `{name}-SDK`, but the package has a more resonable name
 of `lotrsdk` (Lord of the Rings SDK).
 
