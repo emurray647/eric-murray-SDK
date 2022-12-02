@@ -1,5 +1,12 @@
 package lotrsdk
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// this file contains the structs representing the JSON response we get from the API
+
 type Book struct {
 	ID   string `json:"_id"`
 	Name string `json:"name"`
@@ -16,17 +23,6 @@ type Movie struct {
 	RottenTomatoesScore        float32 `json:"rottenTomatoesScore"`
 }
 
-// {
-// 	"_id": "5cd95395de30eff6ebccde56",
-// 	"name": "The Lord of the Rings Series",
-// 	"runtimeInMinutes": 558,
-// 	"budgetInMillions": 281,
-// 	"boxOfficeRevenueInMillions": 2917,
-// 	"academyAwardNominations": 30,
-// 	"academyAwardWins": 17,
-// 	"rottenTomatoesScore": 94
-//   },
-
 type Character struct {
 	ID      string `json:"_id"`
 	Birth   string `json:"birth"`
@@ -41,17 +37,6 @@ type Character struct {
 	WikiURL string `json:"wikiUrl"`
 }
 
-// "_id": "5cdbdecb6dc0baeae48cfac1",
-// "death": "February 293019",
-// "birth": " ,3019",
-// "hair": "Dark",
-// "realm": "NaN",
-// "height": "6'1 (film)",
-// "spouse": "NaN",
-// "gender": "Male",
-// "name": "Lugdush",
-// "race": "Uruk-hai"
-
 type Quote struct {
 	ID        string `json:"_id"`
 	Dialog    string `json:"dialog"`
@@ -59,29 +44,14 @@ type Quote struct {
 	Character string `json:"character"`
 }
 
-// "_id": "5cd96e05de30eff6ebccebd0",
-// "dialog": "Get the wounded on horses.The wolves of lsengard will return.Leave the dead.",
-// "movie": "5cd95395de30eff6ebccde5b",
-// "character": "5cd99d4bde30eff6ebccfe19",
-// "id": "5cd96e05de30eff6ebccebd0"
-
 type Chapter struct {
 	ID          string `json:"_id"`
 	ChapterName string `json:"chapterName"`
 	Book        string `json:"book"`
 }
 
-// "_id": "6091b6d6d58360f988133bc8",
-// "chapterName": "The Grey Havens",
-// "book": "5cf58080b53e011a64671584"
-
-// 24 hex characters
-
-// {
-// 	"_id": "5cf5805fb53e011a64671582",
-// 	"name": "The Fellowship Of The Ring"
-//   },
-
+// Status is kept separate from the rest of the structs as a user "probably" doesn't want to deal
+// with it, but we can still provide it to them in case they do
 type Status struct {
 	Total  int `json:"total"`
 	Limit  int `json:"limit"`
@@ -90,8 +60,21 @@ type Status struct {
 	Pages  int `json:"pages"`
 }
 
-// "total": 62,
-// "limit": 1,
-// "offset": 0,
-// "page": 1,
-// "pages": 62
+// struct to assist in unmarshalling
+type unmarshalStruct[T any] struct {
+	Docs []T `json:"docs"`
+	Status
+}
+
+// unmarshalJSON is a helper function that reads in a byte slice and puts the data into the approriate struct
+//   T - the type we are reading
+//   b - the byte array from which to read
+func unmarshalJSON[T any](b []byte) ([]T, Status, error) {
+	data := unmarshalStruct[T]{}
+	err := json.Unmarshal(b, &data)
+	if err != nil {
+		return nil, Status{}, fmt.Errorf("failed to unmarshal bytes: %w", err)
+	}
+
+	return data.Docs, data.Status, nil
+}

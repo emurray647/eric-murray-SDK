@@ -251,7 +251,7 @@ func newTestClientWithMockServer(data string) Client {
 func TestUnmarshalBook(t *testing.T) {
 	data := `{"docs":[{"_id":"5cf5805fb53e011a64671582","name":"The Fellowship Of The Ring"},{"_id":"5cf58077b53e011a64671583","name":"The Two Towers"},{"_id":"5cf58080b53e011a64671584","name":"The Return Of The King"}],"total":3,"limit":1000,"offset":0,"page":1,"pages":1}`
 	client := newTestClientWithMockServer(data)
-	books, err := client.Books()
+	books, status, err := client.Books()
 
 	assert.Nil(t, err)
 	assert.Equal(t, len(books), 3)
@@ -262,12 +262,17 @@ func TestUnmarshalBook(t *testing.T) {
 	assert.Equal(t, books[2].ID, "5cf58080b53e011a64671584")
 	assert.Equal(t, books[2].Name, "The Return Of The King")
 
+	assert.Equal(t, status.Total, 3)
+	assert.Equal(t, status.Limit, 1000)
+	assert.Equal(t, status.Offset, 0)
+	assert.Equal(t, status.Page, 1)
+	assert.Equal(t, status.Pages, 1)
 }
 
 func TestUnmarshalMovie(t *testing.T) {
 	data := `{"docs":[{"_id":"5cd95395de30eff6ebccde56","name":"The Lord of the Rings Series","runtimeInMinutes":558,"budgetInMillions":281,"boxOfficeRevenueInMillions":2917,"academyAwardNominations":30,"academyAwardWins":17,"rottenTomatoesScore":94}],"total":8,"limit":1,"offset":0,"page":1,"pages":8}`
 	client := newTestClientWithMockServer(data)
-	movies, err := client.Movies()
+	movies, _, err := client.Movies()
 
 	assert.Nil(t, err)
 	assert.Equal(t, len(movies), 1)
@@ -278,7 +283,7 @@ func TestUnmarshalMovie(t *testing.T) {
 func TestUnmarshalCharacter(t *testing.T) {
 	data := `{"docs":[{"_id":"5cd99d4bde30eff6ebccfbbe","height":"","race":"Human","gender":"Female","birth":"","spouse":"Belemir","death":"","realm":"","hair":"","name":"Adanel","wikiUrl":"http://lotr.wikia.com//wiki/Adanel"}],"total":933,"limit":1,"offset":0,"page":1,"pages":933}`
 	client := newTestClientWithMockServer(data)
-	characters, err := client.Characters()
+	characters, _, err := client.Characters()
 
 	assert.Nil(t, err)
 	assert.Equal(t, len(characters), 1)
@@ -289,7 +294,7 @@ func TestUnmarshalCharacter(t *testing.T) {
 func TestUnmarshalQuote(t *testing.T) {
 	data := `{"docs":[{"_id":"5cd96e05de30eff6ebcce7e9","dialog":"Deagol!","movie":"5cd95395de30eff6ebccde5d","character":"5cd99d4bde30eff6ebccfe9e","id":"5cd96e05de30eff6ebcce7e9"}],"total":2390,"limit":1,"offset":0,"page":1,"pages":2390}`
 	client := newTestClientWithMockServer(data)
-	quotes, err := client.Quotes()
+	quotes, _, err := client.Quotes()
 
 	assert.Nil(t, err)
 	assert.Equal(t, len(quotes), 1)
@@ -301,7 +306,7 @@ func TestUnmarshalChapter(t *testing.T) {
 	data := `{"docs":[{"_id":"6091b6d6d58360f988133b8b","chapterName":"A Long-expected Party","book":"5cf5805fb53e011a64671582"}],"total":62,"limit":1,"offset":0,"page":1,"pages":62}`
 
 	client := newTestClientWithMockServer(data)
-	chapters, err := client.Chapters()
+	chapters, _, err := client.Chapters()
 
 	assert.Nil(t, err)
 	assert.Equal(t, len(chapters), 1)

@@ -23,18 +23,19 @@ import (
 
 // we can not chain inequalites (ie, budgetInMillions<300,250 does not work)
 
-type FilterType int
+// FilterCompareType represents all the comparisons available to via a query param
+type FilterCompareType int
 
 const (
-	FilterCompareEqual              = iota
-	FilterCompareNotEqual           = iota
-	FilterCompareLessThan           = iota
-	FilterCompareGreaterThan        = iota
-	FilterCompareLessThanOrEqual    = iota
-	FilterCompareGreaterThanOrEqual = iota
+	FilterCompareEqual              FilterCompareType = iota
+	FilterCompareNotEqual           FilterCompareType = iota
+	FilterCompareLessThan           FilterCompareType = iota
+	FilterCompareGreaterThan        FilterCompareType = iota
+	FilterCompareLessThanOrEqual    FilterCompareType = iota
+	FilterCompareGreaterThanOrEqual FilterCompareType = iota
 )
 
-func (ft FilterType) ToString() (string, error) {
+func (ft FilterCompareType) ToString() (string, error) {
 	switch ft {
 	case FilterCompareEqual:
 		return "=", nil
@@ -52,6 +53,7 @@ func (ft FilterType) ToString() (string, error) {
 	return "", fmt.Errorf("invalid compare operator")
 }
 
+// SortOrder is the different was to sort results (asc or desc)
 type SortOrder int
 
 const (
@@ -69,16 +71,21 @@ func (so SortOrder) ToString() (string, error) {
 	return "", fmt.Errorf("invalid sort order")
 }
 
-// A Filter needs to generate query params
+// Filter represents a way to modify the request, be it for filtering for specific values
+// limiting to a number of results, or sorting the values
 type Filter interface {
-	// GenerateQueryParam() string
-	// AddQueryParam(url.Values)
+	// GenerateRawQuery creates the raw string that will be added to the query params
 	GenerateRawQuery() (string, error)
 }
 
-func BinaryFilter(variable string, operator FilterType, value string, values ...string) Filter {
+// BinaryFilter represents a binary option for selecting the data (ie, budget<100)
+//  key - the field to filter by
+//  operator - the operator for comparision (=, <, etc)
+//  value - the value to search for
+//  values - more that one value can be provided
+func BinaryFilter(key string, operator FilterCompareType, value string, values ...string) Filter {
 	bf := binaryFilter{
-		variable: variable,
+		key:      key,
 		operator: operator,
 	}
 	bf.values = append([]string{value}, values...)
@@ -86,16 +93,26 @@ func BinaryFilter(variable string, operator FilterType, value string, values ...
 }
 
 type binaryFilter struct {
-	variable string
+	key      string
 	values   []string
-	operator FilterType
+	operator FilterCompareType
 }
 
 func (bf binaryFilter) GenerateRawQuery() (string, error) {
 	// key-op-value
-	var sb strings.Builder
-	sb.WriteString(bf.variable)
 	operatorStr, err := bf.operator.ToString()
+	if err != nil {
+		return "", fmt.Errorf("cannot filter with invalid operator")
+	}
+
+	// it is invalid to chain together inequalities
+	if bf.operator != FilterCompareEqual && bf.operator != FilterCompareNotEqual && len(bf.values) > 1 {
+		return "", fmt.Errorf("cannot filter with operator %s on more than one value", operatorStr)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(bf.key)
+
 	if err != nil {
 		return "", fmt.Errorf("failed to generate operator string: %w", err)
 	}
@@ -113,6 +130,8 @@ func (bf binaryFilter) GenerateRawQuery() (string, error) {
 	return sb.String(), nil
 }
 
+// ExistFilter only selects the data if it contains the provided field
+//   key - the field to search for
 func ExistFilter(key string) Filter {
 	return existFilter{
 		key: key,
@@ -127,6 +146,8 @@ func (ef existFilter) GenerateRawQuery() (string, error) {
 	return ef.key, nil
 }
 
+// NotExistFilter only selects the data if it does not contain the provided field
+//   key - the field to search for
 func NotExistFilter(key string) Filter {
 	return notExistFilter{
 		key: key,
@@ -141,17 +162,21 @@ func (nf notExistFilter) GenerateRawQuery() (string, error) {
 	return fmt.Sprintf("!%s", nf.key), nil
 }
 
-// not technically Filters, but they are applied the same way
-type sortFilter struct {
-	value string
-	order SortOrder
-}
+// Sort and pagination are technically not filters, but they are applied the same way
 
+// Sort sorts the output
+//   value - the value to sort by
+//   order - the sorting order (asc/desc)
 func Sort(value string, order SortOrder) Filter {
 	return sortFilter{
 		value: value,
 		order: order,
 	}
+}
+
+type sortFilter struct {
+	value string
+	order SortOrder
 }
 
 func (sf sortFilter) GenerateRawQuery() (string, error) {
@@ -162,6 +187,7 @@ func (sf sortFilter) GenerateRawQuery() (string, error) {
 	return fmt.Sprintf("sort=%s:%s", sf.value, orderStr), nil
 }
 
+// struct used to back Limit, Page, and Offset
 type paginationFilter struct {
 	key   string
 	value string
@@ -171,6 +197,8 @@ func (pf paginationFilter) GenerateRawQuery() (string, error) {
 	return fmt.Sprintf("%s=%s", pf.key, pf.value), nil
 }
 
+// Limit adds limit=%d to the queryparams
+//   value - the amount to limit
 func Limit(value int) Filter {
 	return paginationFilter{
 		key:   "limit",
@@ -178,6 +206,8 @@ func Limit(value int) Filter {
 	}
 }
 
+// Page adds page=%d to the queryparams
+//   value - the amount to page
 func Page(value int) Filter {
 	return paginationFilter{
 		key:   "page",
@@ -185,6 +215,8 @@ func Page(value int) Filter {
 	}
 }
 
+// Offset adds offset=%d to the queryparams
+//   value - the amount to offset
 func Offset(value int) Filter {
 	return paginationFilter{
 		key:   "offset",
@@ -192,6 +224,7 @@ func Offset(value int) Filter {
 	}
 }
 
+// Filters is a slice of Filter(s) that also implements the Filter interface
 type Filters []Filter
 
 func (fs Filters) GenerateRawQuery() (string, error) {
@@ -218,6 +251,8 @@ func (fs Filters) GenerateRawQuery() (string, error) {
 	return sb.String(), nil
 }
 
+// MergeFilters combines multiple filters together as a single filter
+//   filters - the filters to merge
 func MergeFilters(filters ...Filter) Filter {
 	result := Filters{}
 	for _, f := range filters {
